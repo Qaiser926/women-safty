@@ -9,7 +9,8 @@ import 'package:women_safety/child/child_Register_child.dart';
 import 'package:women_safety/component/custom_textfield.dart';
 import 'package:women_safety/component/primeryButton.dart';
 import 'package:women_safety/component/secondryButton.dart';
-import 'package:women_safety/home.dart';
+import 'package:women_safety/db/share_pref.dart';
+import 'package:women_safety/child/bottomBar/bottomPages/home.dart';
 import 'package:women_safety/parent/parent_home.dart';
 import 'package:women_safety/parent/parent_register_Screen.dart';
 import 'package:women_safety/util/color.dart';
@@ -186,8 +187,10 @@ class _LoginScreenState extends State<LoginScreen> {
             .get()
             .then((value) {
           if (value["type"] == "parent") {
+            MySharedPreference.saveUserType("parent");
             goto(context, ParentHome());
           } else {
+              MySharedPreference.saveUserType("child");
             goto(context, HomePage());
           }
         });
