@@ -49,6 +49,11 @@ dependencies:
   shared_preferences: ^2.1.2
   permission_handler: ^10.3.0
   contacts_service: ^0.6.3
+  sqflite: ^2.2.8+4
+  background_sms: ^0.0.4
+  geocode: ^1.0.3
+  geolocator: ^9.0.2
+  geocoding: ^2.1.0
 
 dev_dependencies:
   flutter_test:

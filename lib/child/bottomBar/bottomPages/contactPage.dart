@@ -1,79 +1,185 @@
-// ignore_for_file: no_leading_underscores_for_local_identifiers
+
+// ignore_for_file: no_leading_underscores_for_local_identifiers, prefer_is_empty, unused_local_variable, prefer_const_constructors, unused_field, prefer_final_fields
 
 import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:women_safety/db/db_services.dart';
+import 'package:women_safety/model/contactModel.dart';
 import 'package:women_safety/util/color.dart';
 import 'package:women_safety/util/constants.dart';
-
 class ContactPage extends StatefulWidget {
-   @override
+  const ContactPage({Key? key}) : super(key: key);
+
+  @override
   State<ContactPage> createState() => _ContactPageState();
 }
 
 class _ContactPageState extends State<ContactPage> {
-   
-   List<Contact> contact=[];
+  List<Contact> contacts = [];
+  List<Contact> contactsFiltered = [];
+
+  DatabaseHelper _databaseHelper = DatabaseHelper();
+
+  TextEditingController searchController = TextEditingController();
   @override
   void initState() {
     super.initState();
-    askPermission();
+    askPermissions();
   }
+  // for searching porpuse to search anything the show data
 
-  Future askPermission()async{
-    PermissionStatus permissionStatus= await getContactPermission();
-    if(permissionStatus==PermissionStatus.granted){
-      getContact();
-    }else{
-      handleInvalidPermission(permissionStatus);
-    }
-  }
-  handleInvalidPermission(PermissionStatus permissionStatus)async{
-    if(permissionStatus==PermissionStatus.denied){
-      dialogBox(context, "Access to the contact denied by the user");
-    }else if(permissionStatus==PermissionStatus.permanentlyDenied){
-      dialogBox(context, "May contact does not exit");
-    }
-  }
- Future<PermissionStatus> getContactPermission()async{
-
-  PermissionStatus permission=await Permission.contacts.status;
-  if(permission!= PermissionStatus.granted && permission!=PermissionStatus.permanentlyDenied){
- PermissionStatus permissionStatus=await Permission.contacts.request();
- return permissionStatus;
-  }
-  return permission;
- 
-
-  }
-  getContact()async{
-    List<Contact> _contact=await ContactsService.getContacts();
-    setState(() {
-      contact=_contact;
+  String flattenPhoneNumber(String phoneStr) {
+    return phoneStr.replaceAllMapped(RegExp(r'^(\+)|\D'), (Match m) {
+      return m[0] == "+" ? "+" : "";
     });
   }
+
+  filterContact() {
+    List<Contact> _contacts = [];
+    _contacts.addAll(contacts);
+    if (searchController.text.isNotEmpty) {
+      _contacts.retainWhere((element) {
+        String searchTerm = searchController.text.toLowerCase();
+        String searchTermFlattren = flattenPhoneNumber(searchTerm);
+        String contactName = element.displayName!.toLowerCase();
+        bool nameMatch = contactName.contains(searchTerm);
+        if (nameMatch == true) {
+          return true;
+        }
+        if (searchTermFlattren.isEmpty) {
+          return false;
+        }
+        var phone = element.phones!.firstWhere((p) {
+          String phnFLattered = flattenPhoneNumber(p.value!);
+          return phnFLattered.contains(searchTermFlattren);
+        });
+        return phone.value != null;
+      });
+    }
+    setState(() {
+      contactsFiltered = _contacts;
+    });
+  }
+
+  Future<void> askPermissions() async {
+    PermissionStatus permissionStatus = await getContactsPermissions();
+    if (permissionStatus == PermissionStatus.granted) {
+      getAllContacts();
+      searchController.addListener(() {
+        filterContact();
+      });
+    } else {
+      handInvaliedPermissions(permissionStatus);
+    }
+  }
+
+  handInvaliedPermissions(PermissionStatus permissionStatus) {
+    if (permissionStatus == PermissionStatus.denied) {
+      dialogBox(context, "Access to the contacts denied by the user");
+    } else if (permissionStatus == PermissionStatus.permanentlyDenied) {
+       dialogBox(context, "May contact does exist in this device");
+    }
+  }
+
+  Future<PermissionStatus> getContactsPermissions() async {
+    PermissionStatus permission = await Permission.contacts.status;
+    if (permission != PermissionStatus.granted &&
+        permission != PermissionStatus.permanentlyDenied) {
+      PermissionStatus permissionStatus = await Permission.contacts.request();
+      return permissionStatus;
+    } else {
+      return permission;
+    }
+  }
+
+  getAllContacts() async {
+    List<Contact> _contacts =
+        await ContactsService.getContacts(withThumbnails: false);
+    setState(() {
+      contacts = _contacts;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // for search bool variable
+    bool isSearchIng = searchController.text.isNotEmpty;
+    bool listItemExit = (contactsFiltered.length > 0 || contacts.length > 0);
     return Scaffold(
-      body: contact.length==0?Center(child: CircularProgressIndicator()):
-       ListView.builder(
-         itemCount: contact.length,
-         itemBuilder: (context,index){
-          Contact contacts=contact[index];
-          return ListTile(
-            leading: contacts.avatar!=null && contacts.avatar!.length>0?
-             CircleAvatar(
-               backgroundColor: primeryColor,
-              backgroundImage: MemoryImage(contacts.avatar!),
-            ):CircleAvatar(
-              backgroundColor: primeryColor,
-              child: Text(contacts.initials()),
+      body: contacts.length == 0
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextField(
+                      autofocus: true,
+                      controller: searchController,
+                      decoration: const InputDecoration(
+                          labelText: "search sontact",
+                          prefixIcon: Icon(Icons.search)),
+                    ),
+                  ),
+                  listItemExit == true
+                      ? Expanded(
+                          child: ListView.builder(
+                            itemCount: isSearchIng == true
+                                ? contactsFiltered.length
+                                : contacts.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              Contact contact = isSearchIng == true
+                                  ? contactsFiltered[index]
+                                  : contacts[index];
+                              return ListTile(
+                                title: Text(contact.displayName!),
+                                // subtitle:Text(contact.phones!.elementAt(0)
+                                // .value!) ,
+                                leading: contact.avatar != null &&
+                                        contact.avatar!.length > 0
+                                    ? CircleAvatar(
+                                        backgroundColor: primeryColor,
+                                        backgroundImage:
+                                            MemoryImage(contact.avatar!),
+                                      )
+                                    : CircleAvatar(
+                                        backgroundColor:  primeryColor,
+                                        child: Text(contact.initials()),
+                                      ),
+                                onTap: () {
+                                  if(contact.phones!.length>0){
+                                    var number=contact.phones!.elementAt(0).value!;
+                                    var name=contact.displayName;
+                                    _addContact(ContactModel(name, number));
+                                  }
+                                  else{
+                                      Fluttertoast.showToast(
+                                        msg:
+                                            "Oops! phone number of this contact does exist");
+                                  }
+                               
+                                },
+                              );
+                            },
+                          ),
+                        )
+                      : Text("searching"),
+                ],
+              ),
             ),
-            subtitle: Text(contacts.phones!.first.value!),
-            title: Text(contacts.displayName!),
-          );
-         },
-      ),
     );
   }
+
+void _addContact(ContactModel newContact)async{
+ int result=await _databaseHelper.insertContact(newContact);
+ if(result!=0){
+    Fluttertoast.showToast(msg: "contact added successfully");
+ }
+ else{
+    Fluttertoast.showToast(msg: "Failed to add contacts");
+ }
+ Navigator.of(context).pop(true);
+}
 }

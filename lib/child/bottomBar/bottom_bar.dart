@@ -1,6 +1,7 @@
 // ignore_for_file: use_key_in_widget_constructors
 
 import 'package:flutter/material.dart';
+import 'package:women_safety/child/bottomBar/bottomPages/addContactPage.dart';
 import 'package:women_safety/child/bottomBar/bottomPages/chatPage.dart';
 import 'package:women_safety/child/bottomBar/bottomPages/contactPage.dart';
 import 'package:women_safety/child/bottomBar/bottomPages/home.dart';
@@ -18,7 +19,7 @@ int currentIndex=0;
 
   List<Widget> listData=[
     HomePage(),
-    ContactPage(),
+     AddContactPage(),
    const ChatPage(),
    const ProfilePage(),
    const ReviewPage()
